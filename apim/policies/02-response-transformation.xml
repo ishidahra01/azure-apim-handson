@@ -1,0 +1,65 @@
+<!--
+シナリオB: レスポンス変換ポリシー
+バックエンドコード変更なしでAPIレスポンスフォーマットを変更
+
+このポリシーは以下を実行します:
+1. バックエンドの旧フォーマット { "sku", "price_jpy", "product_name", "category" } を
+   新フォーマット { "productCode", "amount", "currency", "name", "type" } に変換
+2. フィールド名の変更と追加フィールドの挿入
+3. バックエンドコードは一切変更不要
+
+利点: フロントエンドの要求に合わせてAPIを進化させながら、
+      バックエンドは既存のまま稼働可能
+-->
+<policies>
+    <inbound>
+        <base />
+    </inbound>
+    
+    <backend>
+        <base />
+    </backend>
+    
+    <outbound>
+        <base />
+        
+        <!-- レスポンスボディの変換 -->
+        <set-body>@{
+            var response = context.Response.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+            
+            // 新しいフォーマットに変換
+            var transformedResponse = new Newtonsoft.Json.Linq.JObject();
+            
+            // フィールド名を変更してマッピング
+            transformedResponse["productCode"] = response["sku"];
+            transformedResponse["amount"] = response["price_jpy"];
+            transformedResponse["currency"] = "JPY";
+            transformedResponse["name"] = response["product_name"];
+            transformedResponse["type"] = response["category"];
+            
+            // メタデータを追加（変換されたことを示す）
+            transformedResponse["_metadata"] = new Newtonsoft.Json.Linq.JObject
+            {
+                ["transformedBy"] = "APIM",
+                ["transformedAt"] = DateTime.UtcNow.ToString("o"),
+                ["version"] = "2.0"
+            };
+            
+            return transformedResponse.ToString();
+        }</set-body>
+        
+        <!-- Content-Typeを明示的に設定 -->
+        <set-header name="Content-Type" exists-action="override">
+            <value>application/json; charset=utf-8</value>
+        </set-header>
+        
+        <!-- カスタムヘッダーで変換されたことを示す -->
+        <set-header name="X-Response-Transformed" exists-action="override">
+            <value>true</value>
+        </set-header>
+    </outbound>
+    
+    <on-error>
+        <base />
+    </on-error>
+</policies>

@@ -1,0 +1,14 @@
+# Azure Functions artifacts
+bin
+obj
+appsettings.json
+local.settings.json
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/

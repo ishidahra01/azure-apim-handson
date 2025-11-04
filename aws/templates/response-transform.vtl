@@ -1,0 +1,17 @@
+## VTL テンプレート: レスポンス変換
+## 旧フォーマット → 新フォーマット
+
+#set($inputRoot = $input.path('$'))
+{
+  "productCode": "$inputRoot.sku",
+  "amount": $inputRoot.price_jpy,
+  "currency": "JPY",
+  "name": "$util.escapeJavaScript($inputRoot.product_name)",
+  "type": "$inputRoot.category",
+  "_metadata": {
+    "transformedBy": "API-Gateway-VTL",
+    "transformedAt": "$context.requestTime",
+    "version": "2.0",
+    "requestId": "$context.requestId"
+  }
+}

@@ -1,0 +1,90 @@
+<!--
+シナリオB: モック応答ポリシー
+バックエンド未実装でもフロントエンド開発を進められる
+
+このポリシーは以下を実行します:
+1. 特定のSKU（SKU-MOCK）に対してモック応答を返す
+2. バックエンドを呼び出さずに固定のJSONを返却
+3. 開発中の新機能やテストデータとして活用可能
+
+利点: バックエンド開発と並行してフロントエンド開発が可能
+      本番環境でも一時的なフォールバック応答として使用可能
+-->
+<policies>
+    <inbound>
+        <base />
+        
+        <!-- 特定のSKUに対してモック応答を返す -->
+        <choose>
+            <when condition="@(context.Request.MatchedParameters["sku"] == "SKU-MOCK")">
+                <return-response>
+                    <set-status code="200" reason="OK" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json; charset=utf-8</value>
+                    </set-header>
+                    <set-header name="X-Mocked-Response" exists-action="override">
+                        <value>true</value>
+                    </set-header>
+                    <set-header name="X-Mock-Version" exists-action="override">
+                        <value>1.0</value>
+                    </set-header>
+                    <set-body>{
+    "productCode": "SKU-MOCK",
+    "amount": 999,
+    "currency": "JPY",
+    "name": "モック商品（開発用）",
+    "type": "test",
+    "_metadata": {
+        "isMock": true,
+        "mockedBy": "APIM",
+        "mockedAt": "@{DateTime.UtcNow.ToString("o")}",
+        "note": "これはモック応答です。実際のバックエンドは呼び出されていません。"
+    }
+}</set-body>
+                </return-response>
+            </when>
+            
+            <!-- SKU-DEV-* で始まるSKUもモック応答（開発環境用） -->
+            <when condition="@(context.Request.MatchedParameters["sku"].StartsWith("SKU-DEV-"))">
+                <return-response>
+                    <set-status code="200" reason="OK" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-header name="X-Mocked-Response" exists-action="override">
+                        <value>true</value>
+                    </set-header>
+                    <set-body>@{
+                        var sku = context.Request.MatchedParameters["sku"];
+                        return new Newtonsoft.Json.Linq.JObject
+                        {
+                            ["productCode"] = sku,
+                            ["amount"] = 5000,
+                            ["currency"] = "JPY",
+                            ["name"] = "開発用モック商品 - " + sku,
+                            ["type"] = "development",
+                            ["_metadata"] = new Newtonsoft.Json.Linq.JObject
+                            {
+                                ["isMock"] = true,
+                                ["mockedBy"] = "APIM",
+                                ["mockedAt"] = DateTime.UtcNow.ToString("o")
+                            }
+                        }.ToString();
+                    }</set-body>
+                </return-response>
+            </when>
+        </choose>
+    </inbound>
+    
+    <backend>
+        <base />
+    </backend>
+    
+    <outbound>
+        <base />
+    </outbound>
+    
+    <on-error>
+        <base />
+    </on-error>
+</policies>
